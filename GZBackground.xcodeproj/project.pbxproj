@@ -10,9 +10,33 @@
 		287899A12F3F9B0200C37CA1 /* GZBackground.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GZBackground.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		287899B82F3F9B7A00C37CA1 /* Exceptions for "GZBackground" folder in "GZBackground" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				AdaptiveBackgroundShader.metal,
+			);
+			target = 287899A02F3F9B0200C37CA1 /* GZBackground */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		287899B92F3F9B7A00C37CA1 /* Exceptions for "GZBackground" folder in "Copy Bundle Resources" phase from "GZBackground" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = 2878999F2F3F9B0200C37CA1 /* Resources */;
+			membershipExceptions = (
+				AdaptiveBackgroundShader.metal,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		287899A32F3F9B0200C37CA1 /* GZBackground */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				287899B82F3F9B7A00C37CA1 /* Exceptions for "GZBackground" folder in "GZBackground" target */,
+				287899B92F3F9B7A00C37CA1 /* Exceptions for "GZBackground" folder in "Copy Bundle Resources" phase from "GZBackground" target */,
+			);
 			path = GZBackground;
 			sourceTree = "<group>";
 		};

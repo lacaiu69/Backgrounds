@@ -1,0 +1,22 @@
+# Xcode
+.DS_Store
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.swp
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# SwiftPM
+.build/
+Package.resolved
+
+# CocoaPods (if you use it, you usually commit Podfile + Podfile.lock, not Pods/)
+Pods/
+
+# Carthage
+Carthage/Build/
