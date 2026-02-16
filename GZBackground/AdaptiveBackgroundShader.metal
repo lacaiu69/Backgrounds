@@ -59,7 +59,9 @@ static inline float3 screenBlend(float3 base, float3 top, float a) {
 static inline float hash21(float2 p) {
     return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453123);
 }
-
+static inline float hash11(float x) {
+    return fract(sin(x * 127.1) * 43758.5453123);
+}
 static inline float noise21(float2 p) {
     float2 i = floor(p);
     float2 f = fract(p);
@@ -118,7 +120,7 @@ static inline Palette palNeutral() {
     Palette p;
     p.A = float3(0.925, 0.894, 0.882); // #EFE4E1
     p.B = float3(0.882, 0.816, 0.796); // #E1D0CB
-    p.C = float3(0.855, 0.812, 0.765); // #DACFC3
+    p.C = float3(0.769, 0.808, 0.769); // #C4CEC4
     return p;
 }
 
@@ -126,14 +128,44 @@ static inline Palette palEnergetic() {
     Palette p;
     p.A = float3(0.972, 0.915, 0.865); // warm cream
     p.B = float3(0.910, 0.745, 0.720); // blush
-    p.C = float3(0.760, 0.660, 0.600); // warm shadow
+    p.C = float3(0.576, 0.584, 0.776); // warm shadow
     return p;
 }
 
 // ------------------------------------------------------------
 // Animated base gradient (ALL moods)
 // ------------------------------------------------------------
-static inline float3 baseGradientAnimated(float2 q, float t, Palette pal, float moodEnergy) {
+// Global light gray anchor
+//constant float3 LIGHT_GRAY = float3(0.929, 0.929, 0.929);
+// ------------------------------------------------------------
+
+
+// ------------------------------------------------------------
+// Value Noise
+// ------------------------------------------------------------
+static inline float noise(float2 p) {
+    float2 i = floor(p);
+    float2 f = fract(p);
+
+    float a = hash21(i);
+    float b = hash21(i + float2(1.0, 0.0));
+    float c = hash21(i + float2(0.0, 1.0));
+    float d = hash21(i + float2(1.0, 1.0));
+
+    float2 u = f * f * (3.0 - 2.0 * f);
+
+    return mix(a, b, u.x) +
+           (c - a) * u.y * (1.0 - u.x) +
+           (d - b) * u.x * u.y;
+}
+static inline float3 baseGradientAnimated(float2 q,
+                                          float2 uv,
+                                          float t,
+                                          Palette pal,
+                                          float moodEnergy)
+{
+    const float3 LIGHT_GRAY = float3(0.929, 0.929, 0.929); // #EDEDED
+
     float2 drift1 = float2(0.10*sin(t*0.08 + 1.2), 0.08*cos(t*0.07 + 2.0));
     float2 drift2 = float2(0.06*sin(t*0.05 + 0.4), 0.05*cos(t*0.06 + 0.9));
     float2 qq = q + drift1 + drift2 * (0.6 + 0.4*moodEnergy);
@@ -142,17 +174,32 @@ static inline float3 baseGradientAnimated(float2 q, float t, Palette pal, float 
     float g2 = smoothstep(-0.95, 0.95, qq.x * 0.62 + qq.y * 0.20 + 0.06*cos(t*0.04));
     float m  = 0.62 * g1 + 0.38 * g2;
 
-    return (m < 0.5) ? mix(pal.A, pal.B, m * 2.0)
-                     : mix(pal.B, pal.C, (m - 0.5) * 2.0);
-}
-// ============================================================
-// HERO 1b — NEUTRAL FIREFLIES (soft, blurry, sparse, premium)
-// Returns: heroMask (0..1), depth (0..1)  (depth used only for tint bias)
-// ============================================================
-static inline float hash11(float x) {
-    return fract(sin(x * 127.1) * 43758.5453123);
-}
+    float3 base = (m < 0.5)
+        ? mix(pal.A, pal.B, m * 2.0)
+        : mix(pal.B, pal.C, (m - 0.5) * 2.0);
 
+    /// --------------------------------------------------------
+    // EXPANDED + NON-LINEAR TOP GRAY
+    // --------------------------------------------------------
+
+    float y = -uv.y;   // normalized so top = larger values
+
+    // Expand region
+    float grayStart = 0.0;     // starts at mid screen
+    float grayEnd   = 0.5;     // full strength at very top
+
+    float mask = smoothstep(grayStart, grayEnd, y);
+    float breakup = 0.02 * noise(q * 0.8 + t * 0.02);
+    mask = clamp(mask + breakup, 0.0, 1.0);
+ 
+
+    // Mood-dependent intensity
+    float grayStrength = mix(0.90, 0.70, sCurve(moodEnergy));
+
+    float3 finalColor = mix(base, LIGHT_GRAY, mask * grayStrength);
+
+    return finalColor;
+}
 static inline float2 hash22(float2 p) {
     float n = sin(dot(p, float2(127.1, 311.7)));
     return fract(float2(43758.5453123, 22578.1459123) * n);
@@ -244,9 +291,12 @@ static inline float2 heroFireflies(float2 q, float t) {
 // ============================================================
 static inline float2 heroCloudVolumes(float2 uv, float t) {
     // Slow, non-linear time warp (prevents "linear scroll feeling")
-    float tn = t * 0.72;
-    tn += 0.45 * sin(tn * 0.10) + 0.22 * sin(tn * 0.21 + 1.7);
+    // MUCH slower base time
+    float tn = t * 0.28;
 
+    // Softer non-linear drift (lower amplitude + lower frequency)
+    tn += 0.20 * sin(tn * 0.06)
+        + 0.10 * sin(tn * 0.12 + 1.7);
     float2 dirA = normalize(float2(0.75, -0.30));
     float2 dirB = normalize(float2(-0.40, -0.60));
 
@@ -321,7 +371,7 @@ static inline float heroGlassSweep(float2 q, float t) {
 // Returns: heroMask, wrap
 // ============================================================
 static inline float2 heroClothRipplesWonky(float2 q, float t) {
-    float tt = t * 0.65;
+    float tt = t * 0.45;
 
     float2 dir1 = normalize(float2(0.92, 0.38));
     float2 dir2 = normalize(float2(-0.55, 0.83));
@@ -384,7 +434,7 @@ static inline float3 renderOne(float2 uv, float2 uv01, float2 res, float t, floa
     warp = (warp - 0.5) * mix(0.018, 0.040, sCurve(moodEnergy));
     float2 q = uv + warp;
 
-    float3 col = baseGradientAnimated(q, t, pal, moodEnergy);
+    float3 col = baseGradientAnimated(q, uv, t, pal, moodEnergy);
 
     // soft internal bloom
     {
@@ -403,11 +453,11 @@ static inline float3 renderOne(float2 uv, float2 uv01, float2 res, float t, floa
         float3 cloudLight = mix(pal.B, pal.A, 0.52);
         float3 cloudDepth = mix(pal.C, pal.B, 0.50);
 
-        float a = hero * (0.45 + 0.45 * wrap);
+        float a = hero * (0.55 + 0.55 * wrap);
         col = screenBlend(col, cloudLight, a);
 
         // depth (prevents flat “milky” look)
-        col = mix(col, cloudDepth, hero * (0.06 + 0.04 * (1.0 - wrap)));
+        col = mix(col, cloudDepth, hero * (0.07 + 0.05 * (1.0 - wrap)));
         col = clamp(col + hero * 0.008, 0.0, 1.0);
 
         // keep color so clouds don't vanish
